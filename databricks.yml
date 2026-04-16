@@ -1,0 +1,88 @@
+bundle:
+  name: lakepulse
+
+variables:
+  catalog:
+    default: lakepulse
+  schema:
+    default: default
+  warehouse_id:
+    description: "SQL warehouse ID for init scripts"
+  lakebase_min_cu:
+    default: 2
+  lakebase_max_cu:
+    default: 8
+
+resources:
+  # ── Lakebase (Postgres) ──────────────────────────────────────────
+  postgres_projects:
+    lakepulse_db:
+      project_id: lakepulse
+      display_name: LakePulse Metrics DB
+      pg_version: 17
+
+  postgres_branches:
+    main:
+      parent: ${resources.postgres_projects.lakepulse_db.id}
+      branch_id: main
+      no_expiry: true
+
+  postgres_endpoints:
+    default:
+      parent: ${resources.postgres_branches.main.id}
+      endpoint_id: default
+      endpoint_type: ENDPOINT_TYPE_READ_WRITE
+      autoscaling_limit_min_cu: ${var.lakebase_min_cu}
+      autoscaling_limit_max_cu: ${var.lakebase_max_cu}
+
+  # ── Streaming Job: Delta → Lakebase ─────────────────────────────
+  jobs:
+    stream_to_lakebase:
+      name: lakepulse-stream-to-lakebase
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: init_lakebase
+          notebook_task:
+            notebook_path: ./streaming/init_lakebase_table.py
+          new_cluster:
+            spark_version: 16.2.x-scala2.12
+            node_type_id: i3.xlarge
+            num_workers: 0
+            spark_conf:
+              spark.master: "local[*]"
+
+        - task_key: stream
+          depends_on:
+            - task_key: init_lakebase
+          notebook_task:
+            notebook_path: ./streaming/stream_to_lakebase.py
+          new_cluster:
+            spark_version: 16.2.x-scala2.12
+            node_type_id: i3.xlarge
+            num_workers: 0
+            spark_conf:
+              spark.master: "local[*]"
+          timeout_seconds: 0
+
+  # ── Databricks App ──────────────────────────────────────────────
+  apps:
+    lakepulse:
+      name: lakepulse
+      description: "Real-time Mac hardware metrics dashboard"
+      source_code_path: ./app
+      config:
+        command:
+          - uvicorn
+          - app.backend.main:app
+          - --host
+          - 0.0.0.0
+          - --port
+          - "8000"
+
+targets:
+  dev:
+    mode: development
+    default: true
+
+  prod:
+    mode: production

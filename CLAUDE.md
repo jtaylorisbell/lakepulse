@@ -38,7 +38,7 @@ Infrastructure (Lakebase, streaming job, app) is provisioned via DABs (`databric
 
 - All Databricks service integrations use **OAuth authentication** (never Personal Access Tokens)
 - Python package management uses **uv** (never pip). Use `uv add <package>` to add dependencies.
-- Lakebase foreachwriter requires target tables to pre-exist; it does not auto-create tables or manage schema
+- Lakebase schema is managed by Alembic migrations (`alembic/`), following the pattern from [jtaylorisbell/lakebase-ops](https://github.com/jtaylorisbell/lakebase-ops). Connection is auto-resolved via Databricks SDK OAuth in `config.py`.
 - ZeroBus requires a pre-created Delta table and service principal with MODIFY + SELECT grants
 - The `powermetrics` macOS command requires sudo for thermal/fan/GPU data
 
@@ -52,11 +52,17 @@ uv sync
 uv add <package>
 
 # Run metrics collector locally
-sudo uv run python collector/main.py
+sudo uv run --env-file .env python -m collector.main
 
 # Run web app locally
 uv run uvicorn app.backend.main:app --reload
 
 # Frontend dev server
 cd app/frontend && npm run dev
+
+# Run Lakebase migrations
+uv run alembic upgrade head
+
+# Create a new migration
+uv run alembic revision -m "description"
 ```

@@ -35,11 +35,11 @@ app.add_middleware(
 def get_latest_metrics(hostname: str | None = None) -> list[MetricSummary]:
     """Get the most recent value for each metric."""
     query = """
-        SELECT DISTINCT ON (category, metric, tags)
-            category, metric, value, unit, tags, ts
+        SELECT DISTINCT ON (category, metric)
+            category, metric, value AS latest_value, unit, tags, ts
         FROM metrics
         {where}
-        ORDER BY category, metric, tags, ts DESC
+        ORDER BY category, metric, ts DESC
     """
     where = "WHERE hostname = %(hostname)s" if hostname else ""
     with get_connection() as conn:

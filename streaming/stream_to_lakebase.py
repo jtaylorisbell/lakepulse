@@ -8,32 +8,24 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install lakebase-foreachwriter
+# MAGIC %pip install git+https://github.com/jtaylorisbell/lakebase-foreachwriter.git@feature/oauth-credential-provider
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
 
 from pyspark.sql import SparkSession
-from lakebase_foreachwriter import LakebaseForeachWriter
+from lakebase_foreachwriter import LakebaseForeachWriter, oauth_credential_provider
 
 spark = SparkSession.builder.getOrCreate()
 
 # COMMAND ----------
 
-# Configuration — override via notebook widgets or job parameters
-CATALOG = spark.conf.get("spark.databricks.lakepulse.catalog", "lakepulse")
-SCHEMA = spark.conf.get("spark.databricks.lakepulse.schema", "default")
-LANDING_TABLE = f"{CATALOG}.{SCHEMA}.metrics_raw"
-LAKEBASE_PROJECT = "lakepulse"
-CHECKPOINT_PATH = f"/Volumes/{CATALOG}/{SCHEMA}/checkpoints/stream_to_lakebase"
-
-# Resolve Lakebase endpoint + credentials via Databricks SDK
-from databricks.sdk import WorkspaceClient
-w = WorkspaceClient()
-endpoint = w.api_client.do("GET", f"/api/2.0/lakebase/projects/{LAKEBASE_PROJECT}/branches/main/endpoints/default")
-LAKEBASE_HOST = endpoint.get("host")
-LAKEBASE_USER = dbutils.secrets.get(scope="lakepulse", key="lakebase-user")
-LAKEBASE_PASS = dbutils.secrets.get(scope="lakepulse", key="lakebase-pass")
+# Configuration — passed in via DABs base_parameters
+dbutils.widgets.text("landing_table", "")
+dbutils.widgets.text("lakebase_project", "")
+LANDING_TABLE = dbutils.widgets.get("landing_table")
+LAKEBASE_PROJECT = dbutils.widgets.get("lakebase_project")
+CHECKPOINT_PATH = f"/tmp/lakepulse/checkpoints/stream_to_lakebase"
 
 # COMMAND ----------
 
@@ -46,11 +38,10 @@ df = (
 
 # COMMAND ----------
 
-# Write to Lakebase using foreachwriter (upsert mode)
+# Write to Lakebase using foreachwriter (upsert mode, OAuth credentials)
 writer = LakebaseForeachWriter(
-    username=LAKEBASE_USER,
-    password=LAKEBASE_PASS,
-    host=LAKEBASE_HOST,
+    credential_provider=oauth_credential_provider(LAKEBASE_PROJECT, branch_id="production", endpoint_id="primary"),
+    lakebase_name=LAKEBASE_PROJECT,
     table="public.metrics",
     df=df,
     mode="upsert",

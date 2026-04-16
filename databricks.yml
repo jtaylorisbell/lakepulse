@@ -3,37 +3,33 @@ bundle:
 
 variables:
   catalog:
-    default: lakepulse
+    default: classic_stable_yddmqb
   schema:
     default: default
-  warehouse_id:
-    description: "SQL warehouse ID for init scripts"
-  lakebase_min_cu:
-    default: 2
-  lakebase_max_cu:
-    default: 8
+  lakebase_project:
+    default: lakepulse
 
 resources:
-  # ── Lakebase (Postgres) ──────────────────────────────────────────
-  postgres_projects:
-    lakepulse_db:
-      project_id: lakepulse
-      display_name: LakePulse Metrics DB
-      pg_version: 17
+  # ── Lakebase is provisioned externally (project: lakepulse) ─────
+  # See alembic/ for schema migrations.
 
-  postgres_branches:
-    main:
-      parent: ${resources.postgres_projects.lakepulse_db.id}
-      branch_id: main
-      no_expiry: true
-
-  postgres_endpoints:
-    default:
-      parent: ${resources.postgres_branches.main.id}
-      endpoint_id: default
-      endpoint_type: ENDPOINT_TYPE_READ_WRITE
-      autoscaling_limit_min_cu: ${var.lakebase_min_cu}
-      autoscaling_limit_max_cu: ${var.lakebase_max_cu}
+  # ── Cluster ─────────────────────────────────────────────────────
+  clusters:
+    lakepulse_cluster:
+      cluster_name: lakepulse-cluster
+      spark_version: 17.3.x-scala2.13
+      node_type_id: Standard_D4ds_v5
+      num_workers: 0
+      single_user_name: taylor.isbell@databricks.com
+      data_security_mode: SINGLE_USER
+      runtime_engine: STANDARD
+      autotermination_minutes: 120
+      spark_conf:
+        spark.databricks.streaming.realTimeMode.enabled: "true"
+        spark.master: "local[*, 4]"
+        spark.databricks.cluster.profile: singleNode
+      custom_tags:
+        ResourceClass: SingleNode
 
   # ── Streaming Job: Delta → Lakebase ─────────────────────────────
   jobs:
@@ -41,27 +37,13 @@ resources:
       name: lakepulse-stream-to-lakebase
       max_concurrent_runs: 1
       tasks:
-        - task_key: init_lakebase
-          notebook_task:
-            notebook_path: ./streaming/init_lakebase_table.py
-          new_cluster:
-            spark_version: 16.2.x-scala2.12
-            node_type_id: i3.xlarge
-            num_workers: 0
-            spark_conf:
-              spark.master: "local[*]"
-
         - task_key: stream
-          depends_on:
-            - task_key: init_lakebase
           notebook_task:
             notebook_path: ./streaming/stream_to_lakebase.py
-          new_cluster:
-            spark_version: 16.2.x-scala2.12
-            node_type_id: i3.xlarge
-            num_workers: 0
-            spark_conf:
-              spark.master: "local[*]"
+            base_parameters:
+              landing_table: ${var.catalog}.${var.schema}.lakepulse_metrics_raw
+              lakebase_project: ${var.lakebase_project}
+          existing_cluster_id: ${resources.clusters.lakepulse_cluster.cluster_id}
           timeout_seconds: 0
 
   # ── Databricks App ──────────────────────────────────────────────

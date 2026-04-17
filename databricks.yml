@@ -1,6 +1,10 @@
 bundle:
   name: lakepulse
 
+sync:
+  include:
+    - app/frontend/dist/**
+
 variables:
   catalog:
     default: classic_stable_yddmqb
@@ -10,8 +14,12 @@ variables:
     default: lakepulse
 
 resources:
-  # ── Lakebase is provisioned externally (project: lakepulse) ─────
-  # See alembic/ for schema migrations.
+  # ── Lakebase ────────────────────────────────────────────────────
+  postgres_projects:
+    lakepulse_db:
+      project_id: lakepulse
+      display_name: LakePulse
+      pg_version: 17
 
   # ── Cluster ─────────────────────────────────────────────────────
   clusters:
@@ -46,20 +54,22 @@ resources:
           existing_cluster_id: ${resources.clusters.lakepulse_cluster.cluster_id}
           timeout_seconds: 0
 
-  # ── Databricks App (managed outside of DABs — already deployed) ──
-  # apps:
-  #   lakepulse:
-  #     name: lakepulse
-  #     description: "Real-time Wikipedia edits dashboard"
-  #     source_code_path: ./app
-  #     config:
-  #       command:
-  #         - uvicorn
-  #         - app.backend.main:app
-  #         - --host
-  #         - 0.0.0.0
-  #         - --port
-  #         - "8000"
+  # ── Databricks App ──────────────────────────────────────────────
+  apps:
+    lakepulse:
+      name: lakepulse
+      description: "Real-time Wikipedia edits dashboard"
+      source_code_path: .
+      user_api_scopes:
+        - sql
+      config:
+        command:
+          - uvicorn
+          - app.backend.main:app
+          - --host
+          - 0.0.0.0
+          - --port
+          - "8000"
 
 targets:
   dev:

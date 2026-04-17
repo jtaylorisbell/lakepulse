@@ -57,7 +57,7 @@ databricks.yml              # DABs config: cluster, streaming job, app
 ## Prerequisites
 
 - Python 3.12+
-- [uv](https://docs.astral.sh/uv/) (Python package manager — never use pip)
+- [uv](https://docs.astral.sh/uv/)
 - Node.js 18+
 - Databricks workspace with:
   - Unity Catalog enabled
@@ -86,6 +86,22 @@ cd app/frontend && npm install && cd ../..
 ```bash
 cp .env.example .env
 ```
+
+#### (Optional) Create a service principal for ZeroBus
+
+If you don't already have a service principal, create one and generate an OAuth secret:
+
+```bash
+# Create the service principal
+DATABRICKS_CONFIG_PROFILE=your-profile \
+  databricks service-principals create --display-name lakepulse-collector
+
+# Note the application_id from the output, then generate a secret
+DATABRICKS_CONFIG_PROFILE=your-profile \
+  databricks service-principal-secrets create --service-principal-id <application-id>
+```
+
+The `create` command returns the `application_id` (use as `ZEROBUS_CLIENT_ID`). The `secrets create` command returns the `secret` (use as `ZEROBUS_CLIENT_SECRET`) — it is only shown once.
 
 Edit `.env` with your values:
 

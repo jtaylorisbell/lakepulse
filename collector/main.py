@@ -57,7 +57,9 @@ def main() -> None:
 
             publisher.publish(batch)
             total_published += len(batch)
-            log.info("Published %d events (total: %d)", len(batch), total_published)
+            stats = publisher.stats
+            log.info("Published %d events (total: %d, acked: %d, in_flight: %d, errors: %d)",
+                     len(batch), total_published, stats["acked"], stats["in_flight"], stats["errors"])
 
     except KeyboardInterrupt:
         log.info("Shutting down (published %d events total)", total_published)

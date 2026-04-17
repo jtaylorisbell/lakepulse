@@ -9,3 +9,4 @@ dist/
 node_modules/
 app/frontend/dist/
 .DS_Store
+.playwright-mcp/

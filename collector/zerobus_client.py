@@ -1,13 +1,16 @@
-"""ZeroBus SDK client for publishing metrics to Delta table."""
+"""ZeroBus SDK client for publishing wiki events to Delta table."""
 
+import logging
 import os
 
 from zerobus.sdk.sync import ZerobusSdk
+
+log = logging.getLogger("lakepulse.collector")
 from zerobus.sdk.shared import RecordType, StreamConfigurationOptions, TableProperties
 
 
 class ZeroBusPublisher:
-    """Publishes metric records to a Databricks Delta table via ZeroBus."""
+    """Publishes event records to a Databricks Delta table via ZeroBus."""
 
     def __init__(
         self,
@@ -19,9 +22,11 @@ class ZeroBusPublisher:
     ):
         self.server_endpoint = server_endpoint or os.environ["ZEROBUS_ENDPOINT"]
         self.workspace_url = workspace_url or os.environ["DATABRICKS_HOST"]
-        self.client_id = client_id or os.environ["DATABRICKS_CLIENT_ID"]
-        self.client_secret = client_secret or os.environ["DATABRICKS_CLIENT_SECRET"]
-        self.table = table or os.environ.get("LAKEPULSE_LANDING_TABLE", "lakepulse.default.metrics_raw")
+        self.client_id = client_id or os.environ["ZEROBUS_CLIENT_ID"]
+        self.client_secret = client_secret or os.environ["ZEROBUS_CLIENT_SECRET"]
+        self.table = table or os.environ.get("LAKEPULSE_LANDING_TABLE", "lakepulse.default.wiki_events_raw")
+        log.info("ZeroBus target table: %s", self.table)
+        log.info("ZeroBus endpoint: %s", self.server_endpoint)
 
         self._sdk = ZerobusSdk(self.server_endpoint, self.workspace_url)
         table_props = TableProperties(self.table)
@@ -31,9 +36,11 @@ class ZeroBusPublisher:
         )
 
     def publish(self, records: list[dict]) -> None:
-        """Send a batch of metric records to ZeroBus."""
+        """Send a batch of records to ZeroBus with batched ack waiting."""
+        acks = []
         for record in records:
-            ack = self._stream.ingest_record(record)
+            acks.append(self._stream.ingest_record(record))
+        for ack in acks:
             ack.wait_for_ack()
 
     def close(self) -> None:

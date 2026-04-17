@@ -41,25 +41,25 @@ resources:
           notebook_task:
             notebook_path: ./streaming/stream_to_lakebase.py
             base_parameters:
-              landing_table: ${var.catalog}.${var.schema}.lakepulse_metrics_raw
+              landing_table: ${var.catalog}.${var.schema}.wiki_events_raw
               lakebase_project: ${var.lakebase_project}
           existing_cluster_id: ${resources.clusters.lakepulse_cluster.cluster_id}
           timeout_seconds: 0
 
-  # ── Databricks App ──────────────────────────────────────────────
-  apps:
-    lakepulse:
-      name: lakepulse
-      description: "Real-time Mac hardware metrics dashboard"
-      source_code_path: ./app
-      config:
-        command:
-          - uvicorn
-          - app.backend.main:app
-          - --host
-          - 0.0.0.0
-          - --port
-          - "8000"
+  # ── Databricks App (managed outside of DABs — already deployed) ──
+  # apps:
+  #   lakepulse:
+  #     name: lakepulse
+  #     description: "Real-time Wikipedia edits dashboard"
+  #     source_code_path: ./app
+  #     config:
+  #       command:
+  #         - uvicorn
+  #         - app.backend.main:app
+  #         - --host
+  #         - 0.0.0.0
+  #         - --port
+  #         - "8000"
 
 targets:
   dev:

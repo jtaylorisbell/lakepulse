@@ -1,8 +1,8 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # LakePulse: Stream metrics from Delta → Lakebase
+# MAGIC # LakePulse: Stream Wikipedia edits from Delta → Lakebase
 # MAGIC
-# MAGIC Reads the ZeroBus landing table (`lakepulse.default.metrics_raw`) with
+# MAGIC Reads the ZeroBus landing table (`wiki_events_raw`) with
 # MAGIC Spark Structured Streaming in real-time mode, and writes to Lakebase
 # MAGIC using `lakebase-foreachwriter` in upsert mode.
 
@@ -14,6 +14,7 @@
 # COMMAND ----------
 
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import current_timestamp
 from lakebase_foreachwriter import LakebaseForeachWriter, oauth_credential_provider
 
 spark = SparkSession.builder.getOrCreate()
@@ -36,18 +37,21 @@ df = (
     .table(LANDING_TABLE)
 )
 
+# Add processed_at timestamp for pipeline latency instrumentation
+df = df.withColumn("processed_at", current_timestamp())
+
 # COMMAND ----------
 
 # Write to Lakebase using foreachwriter (upsert mode, OAuth credentials)
 writer = LakebaseForeachWriter(
     credential_provider=oauth_credential_provider(LAKEBASE_PROJECT, branch_id="production", endpoint_id="primary"),
     lakebase_name=LAKEBASE_PROJECT,
-    table="public.metrics",
+    table="public.wiki_events",
     df=df,
     mode="upsert",
-    primary_keys=["ts", "hostname", "category", "metric"],
-    batch_size=500,
-    batch_interval_ms=200,
+    primary_keys=["event_id"],
+    batch_size=100,
+    batch_interval_ms=50,
 )
 
 query = (

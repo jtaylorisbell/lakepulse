@@ -191,6 +191,47 @@ def get_throughput(window_seconds: int = Query(default=60, le=300)) -> Throughpu
     )
 
 
+# ── Section 2b: Latency History ────────────────────────────────────────────
+
+
+@app.get("/api/stats/latency-history")
+def get_latency_history(
+    minutes: int = Query(default=10, le=60),
+    bucket_seconds: int = Query(default=2, le=30),
+) -> list[dict]:
+    """Historical write latency (p50/p95) in time buckets."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""SELECT
+                    time_bucket AS ts,
+                    COALESCE(percentile_cont(0.5) WITHIN GROUP (
+                        ORDER BY EXTRACT(EPOCH FROM (processed_at - ingested_at)) * 1000
+                    ), 0) AS p50,
+                    COALESCE(percentile_cont(0.95) WITHIN GROUP (
+                        ORDER BY EXTRACT(EPOCH FROM (processed_at - ingested_at)) * 1000
+                    ), 0) AS p95
+                FROM (
+                    SELECT
+                        ingested_at, processed_at,
+                        date_trunc('second', processed_at)
+                            - (EXTRACT(SECOND FROM processed_at)::int %% %(bucket)s) * INTERVAL '1 second'
+                            AS time_bucket
+                    FROM wiki_events
+                    WHERE {_NO_HEARTBEAT}
+                      AND processed_at IS NOT NULL
+                      AND processed_at > NOW() - MAKE_INTERVAL(secs := %(window)s)
+                ) bucketed
+                GROUP BY time_bucket
+                ORDER BY time_bucket""",
+            {"window": minutes * 60, "bucket": bucket_seconds},
+        ).fetchall()
+
+    return [
+        {"ts": row["ts"].isoformat(), "p50": round(row["p50"], 1), "p95": round(row["p95"], 1)}
+        for row in rows
+    ]
+
+
 # ── Section 3: Bot vs Human ─────────────────────────────────────────────────
 
 

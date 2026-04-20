@@ -109,6 +109,17 @@ export async function fetchThroughput(windowSeconds = 60): Promise<ThroughputSta
   return res.json();
 }
 
+export interface LatencyPoint {
+  ts: string;
+  p50: number;
+  p95: number;
+}
+
+export async function fetchLatencyHistory(minutes = 10, bucketSeconds = 2): Promise<LatencyPoint[]> {
+  const res = await fetch(`${BASE}/stats/latency-history?minutes=${minutes}&bucket_seconds=${bucketSeconds}`);
+  return res.json();
+}
+
 export async function fetchBotHuman(minutes = 5): Promise<BotHumanSplit> {
   const res = await fetch(`${BASE}/stats/bot-human?minutes=${minutes}`);
   return res.json();

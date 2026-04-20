@@ -18,18 +18,13 @@ export default function ThroughputBar() {
 
   if (!data) return null;
 
-  // Use the first stage (Collector → Lakebase) for the chart
-  const writeStage = data.stages[0];
-
   return (
     <div className="throughput-section">
       <div className="throughput-bar">
         <CounterCard label="Events / sec" value={data.events_per_sec.toFixed(1)} />
         <CounterCard label="Total Today" value={formatCount(data.total_events_today)} />
       </div>
-      {writeStage && (
-        <LatencyChart p50={writeStage.p50_ms} p95={writeStage.p95_ms} />
-      )}
+      <LatencyChart />
     </div>
   );
 }

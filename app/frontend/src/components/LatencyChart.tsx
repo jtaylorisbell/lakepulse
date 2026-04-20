@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   LineChart,
   Line,
@@ -8,45 +8,29 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-
-interface DataPoint {
-  time: string;
-  ts: number;
-  p50: number;
-  p95: number;
-}
-
-const MAX_POINTS = 300; // 10 min at 2s intervals
+import { fetchLatencyHistory } from "../api";
 
 function formatMs(ms: number): string {
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
   return `${ms.toFixed(0)}ms`;
 }
 
-interface LatencyChartProps {
-  p50: number;
-  p95: number;
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-export default function LatencyChart({ p50, p95 }: LatencyChartProps) {
-  const buffer = useRef<DataPoint[]>([]);
-  const [data, setData] = useState<DataPoint[]>([]);
+export default function LatencyChart() {
+  const { data: raw } = useQuery({
+    queryKey: ["latency-history"],
+    queryFn: () => fetchLatencyHistory(10, 2),
+    refetchInterval: 2000,
+  });
 
-  useEffect(() => {
-    const now = Date.now();
-    const last = buffer.current[buffer.current.length - 1];
-    if (last && now - last.ts < 1500) return;
-
-    const point: DataPoint = {
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      ts: now,
-      p50,
-      p95,
-    };
-    const next = [...buffer.current, point].slice(-MAX_POINTS);
-    buffer.current = next;
-    setData(next);
-  }, [p50, p95]);
+  const data = (raw ?? []).map((h) => ({
+    time: formatTime(h.ts),
+    p50: h.p50,
+    p95: h.p95,
+  }));
 
   const latest = data[data.length - 1];
   const avg = data.length > 10 ? data.reduce((s, d) => s + d.p50, 0) / data.length : null;
@@ -86,7 +70,7 @@ export default function LatencyChart({ p50, p95 }: LatencyChartProps) {
               borderRadius: 6,
               fontSize: 11,
             }}
-            formatter={(value: number, name: string) => [formatMs(value), name]}
+            formatter={(value) => [formatMs(Number(value)), undefined]}
           />
           {avg !== null && (
             <ReferenceLine

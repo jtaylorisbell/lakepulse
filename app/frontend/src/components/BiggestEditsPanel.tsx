@@ -35,7 +35,7 @@ export default function BiggestEditsPanel() {
           return (
             <div key={edit.event_id} className="biggest-edit-row">
               <div className="be-info">
-                <span className="be-title" title={edit.title}>{edit.title}</span>
+                <a className="be-title" href={edit.title_url || undefined} target="_blank" rel="noopener noreferrer" title={edit.title}>{edit.title}</a>
                 <span className="be-meta">
                   {wikiLabel(edit.wiki)} &middot; {edit.user_name} &middot; {formatTime(edit.ts)}
                 </span>

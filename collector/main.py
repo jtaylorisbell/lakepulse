@@ -1,17 +1,18 @@
-"""LakePulse collector: streams live Wikipedia edits and publishes to ZeroBus."""
+"""LakePulse collector: streams live Wikipedia edits and writes to Lakebase."""
 
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 
 from collector import wiki_stream
-from collector.zerobus_client import ZeroBusPublisher
+from collector.lakebase_writer import LakebaseWriter
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("lakepulse.collector")
 
 HEARTBEAT_INTERVAL = 5  # seconds
 BATCH_SIZE = 50
+FLUSH_INTERVAL = 1.0  # seconds — flush partial batches to keep latency low
 
 
 def _make_heartbeat() -> dict:
@@ -41,30 +42,37 @@ def _make_heartbeat() -> dict:
     }
 
 
-def main() -> None:
-    log.info("Starting LakePulse collector — Wikimedia EventStreams")
-    publisher = ZeroBusPublisher()
+def run(stop_event: threading.Event | None = None) -> None:
+    """Main collector loop. Set stop_event to signal shutdown from another thread."""
+    log.info("Starting LakePulse collector — Wikimedia EventStreams → Lakebase")
+    writer = LakebaseWriter()
     last_heartbeat = time.monotonic()
-    total_published = 0
+    total_written = 0
 
     try:
-        for batch in wiki_stream.stream_events(batch_size=BATCH_SIZE):
-            # Inject heartbeat if enough time has passed
+        for batch in wiki_stream.stream_events(batch_size=BATCH_SIZE, flush_interval=FLUSH_INTERVAL):
+            if stop_event and stop_event.is_set():
+                log.info("Stop signal received, shutting down collector")
+                break
+
             now = time.monotonic()
             if now - last_heartbeat >= HEARTBEAT_INTERVAL:
                 batch.append(_make_heartbeat())
                 last_heartbeat = now
 
-            publisher.publish(batch)
-            total_published += len(batch)
-            stats = publisher.stats
-            log.info("Published %d events (total: %d, acked: %d, in_flight: %d, errors: %d)",
-                     len(batch), total_published, stats["acked"], stats["in_flight"], stats["errors"])
+            written = writer.write(batch)
+            total_written += written
+            log.info("Wrote %d events to Lakebase (total: %d)", written, total_written)
 
     except KeyboardInterrupt:
-        log.info("Shutting down (published %d events total)", total_published)
+        log.info("Shutting down (wrote %d events total)", total_written)
     finally:
-        publisher.close()
+        writer.close()
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    run()
 
 
 if __name__ == "__main__":

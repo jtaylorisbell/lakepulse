@@ -64,6 +64,7 @@ export interface WikiActivity {
 export interface BiggestEdit {
   event_id: number;
   title: string;
+  title_url: string | null;
   wiki: string;
   user_name: string;
   size_delta: number;

@@ -1,7 +1,8 @@
 """FastAPI backend for LakePulse — serves live Wikipedia edit data from Lakebase."""
 
 import asyncio
-import json
+import logging
+import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -23,6 +24,9 @@ from app.backend.models import (
     WikiActivity,
     WikiEvent,
 )
+from collector.main import run as collector_run
+
+log = logging.getLogger("lakepulse.app")
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
@@ -32,7 +36,19 @@ _NO_HEARTBEAT = "event_type != '_heartbeat'"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    stop_event = threading.Event()
+    collector_thread = threading.Thread(
+        target=collector_run,
+        args=(stop_event,),
+        daemon=True,
+        name="lakepulse-collector",
+    )
+    collector_thread.start()
+    log.info("Collector thread started")
     yield
+    stop_event.set()
+    collector_thread.join(timeout=10)
+    log.info("Collector thread stopped")
 
 
 app = FastAPI(title="LakePulse", lifespan=lifespan)
@@ -119,8 +135,8 @@ def get_throughput(window_seconds: int = Query(default=60, le=300)) -> Throughpu
         ).fetchone()
 
         # Latency from the most recent 100 events — avoids window-age bias
-        # Measures only our pipeline: ingested_at (collector received) → NOW() (queryable)
-        # Uses processed_at (set by Spark) to split ZeroBus→Delta from Spark→Lakebase
+        # Stage 1: ingested_at → processed_at (collector SSE receipt → Lakebase write)
+        # Stage 2: processed_at → NOW() (Lakebase write → dashboard query)
         lat_row = conn.execute(
             f"""SELECT
                     COALESCE(percentile_cont(0.5) WITHIN GROUP (
@@ -131,16 +147,16 @@ def get_throughput(window_seconds: int = Query(default=60, le=300)) -> Throughpu
                     ), 0) AS latency_p95_ms,
                     COALESCE(percentile_cont(0.5) WITHIN GROUP (
                         ORDER BY EXTRACT(EPOCH FROM (COALESCE(processed_at, ingested_at) - ingested_at)) * 1000
-                    ), 0) AS zerobus_p50,
+                    ), 0) AS write_p50,
                     COALESCE(percentile_cont(0.95) WITHIN GROUP (
                         ORDER BY EXTRACT(EPOCH FROM (COALESCE(processed_at, ingested_at) - ingested_at)) * 1000
-                    ), 0) AS zerobus_p95,
+                    ), 0) AS write_p95,
                     COALESCE(percentile_cont(0.5) WITHIN GROUP (
                         ORDER BY EXTRACT(EPOCH FROM (NOW() - COALESCE(processed_at, ingested_at))) * 1000
-                    ), 0) AS spark_p50,
+                    ), 0) AS query_p50,
                     COALESCE(percentile_cont(0.95) WITHIN GROUP (
                         ORDER BY EXTRACT(EPOCH FROM (NOW() - COALESCE(processed_at, ingested_at))) * 1000
-                    ), 0) AS spark_p95
+                    ), 0) AS query_p95
                 FROM (
                     SELECT ingested_at, processed_at FROM wiki_events
                     WHERE {_NO_HEARTBEAT}
@@ -162,14 +178,14 @@ def get_throughput(window_seconds: int = Query(default=60, le=300)) -> Throughpu
         total_events_today=today_row["cnt"],
         stages=[
             LatencyStage(
-                label="ZeroBus \u2192 Delta",
-                p50_ms=round(lat_row["zerobus_p50"] or 0, 1),
-                p95_ms=round(lat_row["zerobus_p95"] or 0, 1),
+                label="Collector \u2192 Lakebase",
+                p50_ms=round(lat_row["write_p50"] or 0, 1),
+                p95_ms=round(lat_row["write_p95"] or 0, 1),
             ),
             LatencyStage(
-                label="Spark \u2192 Lakebase",
-                p50_ms=round(lat_row["spark_p50"] or 0, 1),
-                p95_ms=round(lat_row["spark_p95"] or 0, 1),
+                label="Lakebase \u2192 Dashboard",
+                p50_ms=round(lat_row["query_p50"] or 0, 1),
+                p95_ms=round(lat_row["query_p95"] or 0, 1),
             ),
         ],
     )
@@ -294,7 +310,7 @@ def get_biggest_edits(
     since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
     with get_connection() as conn:
         rows = conn.execute(
-            f"""SELECT event_id, title, wiki, user_name,
+            f"""SELECT event_id, title, title_url, wiki, user_name,
                        (length_new - length_old) AS size_delta, ts
                 FROM wiki_events
                 WHERE {_NO_HEARTBEAT}

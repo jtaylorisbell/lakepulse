@@ -92,7 +92,7 @@ header h1 {
 
 .throughput-bar {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
 }
 
@@ -152,12 +152,12 @@ header h1 {
 
 @media (max-width: 1024px) {
   .main-grid { grid-template-columns: 1fr; }
-  .throughput-bar { grid-template-columns: repeat(3, 1fr); }
+  .throughput-bar { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 640px) {
   .analytics-row { grid-template-columns: 1fr; }
-  .throughput-bar { grid-template-columns: repeat(2, 1fr); }
+  .throughput-bar { grid-template-columns: 1fr; }
 }
 
 /* ── Panels (shared) ─────────────────────────────────────────────────────── */
@@ -568,136 +568,42 @@ header h1 {
 .status-ok { color: var(--green); }
 .status-warn { color: var(--orange); }
 
-/* ── Latency Pipeline ─────────────────────────────────────────────────────── */
+/* ── Latency Chart ────────────────────────────────────────────────────────── */
 
-.latency-pipeline {
+.latency-chart {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
-.lp-header {
+.lc-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.lp-title {
+.lc-title {
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 
-.lp-total {
+.lc-current {
   display: flex;
   align-items: baseline;
   gap: 4px;
   font-variant-numeric: tabular-nums;
 }
 
-.lp-total-value { font-size: 0.85rem; font-weight: 700; color: var(--text); }
-.lp-total-label { font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase; }
-.lp-total-sep { color: var(--text-muted); font-size: 0.7rem; }
-
-/* Flow: [W] ─── segment ─── [DBX] ─── segment ─── [PG] */
-.lp-flow {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  height: 32px;
-}
-
-.lp-node {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.5rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  flex-shrink: 0;
-  z-index: 1;
-}
-
-.lp-node-source { background: var(--green); color: #0a0a14; }
-.lp-node-mid { background: var(--purple); color: #0a0a14; }
-.lp-node-dest { background: var(--accent); color: #0a0a14; }
-
-.lp-segment-wrap {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  position: relative;
-}
-
-.lp-connector {
-  height: 2px;
-  width: 8px;
-  background: var(--border);
-  flex-shrink: 0;
-}
-
-.lp-segment {
-  flex: 1;
-  height: 22px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 40px;
-  position: relative;
-  opacity: 0.85;
-}
-
-.lp-seg-time {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #0a0a14;
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 4px rgba(0,0,0,0.3);
-}
-
-/* Labels row */
-.lp-labels {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.lp-label-edge {
-  font-size: 0.55rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  flex-shrink: 0;
-  width: 52px;
-  text-align: center;
-}
-
-.lp-label-stage {
-  flex: 1;
-  text-align: center;
-  font-size: 0.55rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.lp-label-p95 {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-size: 0.5rem;
-}
+.lc-value { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+.lc-label { font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase; }
+.lc-sep { color: var(--text-muted); font-size: 0.7rem; }
 
 @media (max-width: 1024px) {
   .throughput-section { grid-template-columns: 1fr; }

@@ -97,7 +97,7 @@ export default function SearchPanel() {
                 >
                   <span>{formatTime(e.ts)}</span>
                   <span>{e.wiki}</span>
-                  <span className="search-title">{e.title}</span>
+                  <a className="search-title" href={e.title_url || undefined} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()}>{e.title}</a>
                   <span>{e.user_name}</span>
                   <span>{e.event_type}</span>
                   <span className={e.size_delta != null ? (e.size_delta >= 0 ? "delta-positive" : "delta-negative") : ""}>

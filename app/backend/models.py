@@ -67,6 +67,7 @@ class WikiActivity(BaseModel):
 class BiggestEdit(BaseModel):
     event_id: int
     title: str
+    title_url: str | None = None
     wiki: str
     user_name: str
     size_delta: int

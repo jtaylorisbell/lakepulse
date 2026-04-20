@@ -110,8 +110,11 @@ def flatten_event(event: dict) -> dict | None:
     }
 
 
-def stream_events(batch_size: int = 50) -> Iterator[list[dict]]:
+def stream_events(batch_size: int = 50, flush_interval: float = 1.0) -> Iterator[list[dict]]:
     """Yield batches of flattened events from the Wikimedia SSE stream.
+
+    Yields when the batch reaches *batch_size* events OR *flush_interval*
+    seconds have elapsed since the last yield, whichever comes first.
 
     Handles auto-reconnection with ``Last-Event-ID`` when the connection
     drops (Wikimedia enforces a ~15-minute timeout).
@@ -127,6 +130,7 @@ def stream_events(batch_size: int = 50) -> Iterator[list[dict]]:
             log.info("Connected to %s", STREAM_URL)
 
             batch: list[dict] = []
+            last_flush = time.monotonic()
             for eid, raw_event in parse_sse_events(resp):
                 if eid:
                     last_event_id = eid
@@ -136,9 +140,11 @@ def stream_events(batch_size: int = 50) -> Iterator[list[dict]]:
                     continue
 
                 batch.append(record)
-                if len(batch) >= batch_size:
+                now = time.monotonic()
+                if len(batch) >= batch_size or (now - last_flush) >= flush_interval:
                     yield batch
                     batch = []
+                    last_flush = now
 
         except (requests.ConnectionError, requests.Timeout,
                 requests.exceptions.ChunkedEncodingError) as exc:

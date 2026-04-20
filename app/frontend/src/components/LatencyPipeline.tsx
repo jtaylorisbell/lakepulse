@@ -18,8 +18,8 @@ export default function LatencyPipeline({ stages, totalP50, totalP95 }: LatencyP
 
   const total = stages.reduce((sum, s) => sum + s.p50_ms, 0);
 
-  // Node labels: collector → ZeroBus → Delta → Lakebase
-  const nodes = ["C", "ZB", "PG"];
+  // Node labels: Collector → Lakebase → Dashboard
+  const nodes = ["C", "PG", "UI"];
 
   return (
     <div className="latency-pipeline">

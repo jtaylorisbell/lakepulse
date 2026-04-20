@@ -39,9 +39,9 @@ export default function EventRow({ event }: EventRowProps) {
       <span className="event-wiki" title={event.server_name}>
         {wikiLabel(event.wiki)}
       </span>
-      <span className="event-title" title={event.comment || undefined}>
+      <a className="event-title" href={event.title_url || undefined} target="_blank" rel="noopener noreferrer" title={event.comment || undefined}>
         {event.title}
-      </span>
+      </a>
       <span className="event-user">{event.user_name}</span>
       <span
         className="event-type"

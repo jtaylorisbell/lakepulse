@@ -15,10 +15,5 @@ dependencies = [
     "pydantic-settings>=2.13.1",
 ]
 
-[project.optional-dependencies]
-collector = [
-    "databricks-zerobus-ingest-sdk>=0.1",
-]
-
 [project.scripts]
 lakepulse-collect = "collector.main:main"

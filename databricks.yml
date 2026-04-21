@@ -23,6 +23,7 @@ resources:
         - name: postgres
           postgres:
             branch: projects/lakepulse/branches/production
+            # Auto-generated database ID — not exposed by DABs for dynamic reference
             database: projects/lakepulse/branches/production/databases/db-pncg-o7y0cs6idn
             permission: CAN_CONNECT_AND_CREATE
 

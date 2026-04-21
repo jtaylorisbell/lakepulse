@@ -14,7 +14,7 @@ def _build_dsn() -> str:
     host = _lb.get_host()
     user = quote_plus(_lb.get_user())
     password = quote_plus(_lb.get_password())
-    return f"postgresql://{user}:{password}@{host}:5432/{_lb.database}?sslmode=require"
+    return f"postgresql://{user}:{password}@{host}:5432/{_lb.database}?sslmode=require&options=-csearch_path%3Dlakepulse"
 
 
 def get_connection() -> psycopg.Connection:

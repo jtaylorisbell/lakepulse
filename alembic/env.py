@@ -24,7 +24,7 @@ def _build_url(lb: LakebaseSettings) -> str:
     return (
         f"postgresql+psycopg://{quote_plus(user)}:{quote_plus(password)}"
         f"@{host}:5432/{lb.database}"
-        f"?sslmode=require&connect_timeout=30"
+        f"?sslmode=require&connect_timeout=30&options=-csearch_path%3Dlakepulse"
     )
 
 
@@ -50,6 +50,9 @@ def run_migrations_online() -> None:
     connectable = create_engine(url, poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
+        from sqlalchemy import text
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS lakepulse"))
+        connection.commit()
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()

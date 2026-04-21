@@ -65,7 +65,7 @@ class LakebaseWriter:
         host = self._settings.get_host()
         user = quote_plus(self._settings.get_user())
         password = quote_plus(self._settings.get_password())
-        return f"postgresql://{user}:{password}@{host}:5432/{self._settings.database}?sslmode=require"
+        return f"postgresql://{user}:{password}@{host}:5432/{self._settings.database}?sslmode=require&options=-csearch_path%3Dlakepulse"
 
     def _connect(self) -> None:
         log.info("Connecting to Lakebase...")

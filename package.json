@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "workspaces": ["app/frontend"],
+  "scripts": {
+    "build": "npm run build -w app/frontend"
+  }
+}

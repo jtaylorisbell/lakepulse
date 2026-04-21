@@ -1,9 +1,9 @@
 bundle:
   name: lakepulse
 
-sync:
-  include:
-    - app/frontend/dist/**
+permissions:
+  - user_name: taylor.isbell@databricks.com
+    level: CAN_MANAGE
 
 resources:
   # ── Lakebase ────────────────────────────────────────────────────
@@ -19,16 +19,12 @@ resources:
       name: lakepulse
       description: "Real-time Wikipedia edits dashboard"
       source_code_path: .
-      user_api_scopes:
-        - sql
-      config:
-        command:
-          - uvicorn
-          - app.backend.main:app
-          - --host
-          - 0.0.0.0
-          - --port
-          - "8000"
+      resources:
+        - name: postgres
+          postgres:
+            branch: projects/lakepulse/branches/production
+            database: projects/lakepulse/branches/production/databases/db-pncg-o7y0cs6idn
+            permission: CAN_CONNECT_AND_CREATE
 
 targets:
   dev:

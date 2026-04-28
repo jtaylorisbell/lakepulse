@@ -91,20 +91,9 @@ cd app/frontend && npm install && cd ../..
 
 2. Create a dev Lakebase branch:
 
-```python
-# uv run --env-file .env python
-from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.postgres import Branch, BranchSpec
-
-w = WorkspaceClient()
-w.postgres.create_branch(
-    parent="projects/lakepulse",
-    branch_id="dev-your-name",
-    branch=Branch(
-        parent="projects/lakepulse/branches/production",
-        spec=BranchSpec(no_expiry=True),
-    ),
-).wait()
+```bash
+databricks postgres create-branch projects/lakepulse dev-your-name \
+  --json '{"parent": "projects/lakepulse/branches/production", "spec": {"no_expiry": true}}'
 ```
 
 3. Set `LAKEBASE_BRANCH_ID=dev-your-name` in your `.env`.
